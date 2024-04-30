@@ -2269,10 +2269,64 @@ QA output created by 1131
 ---
 
 
-# HELP hinv_ncpu number of CPUs in the system
+# HELP hinv_ncpu b'number of CPUs in the system'
 # PCP5 hinv_ncpu 60.0.32 u32 PM_INDOM_NULL discrete
 # TYPE hinv_ncpu gauge
 hinv_ncpu{domainname="DOMAINID",groupid="GROUPID",hostname="HOST",machineid="MACHINEID",userid="USERID",agent="linux"} NCPU
+---
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+	"attributes": [
+	  {
+	    "os.type": "linux",
+	    "service.name": "pcp",
+	    "telemetry.sdk.language": "python",
+	    "telemetry.sdk.name": "opentelemetry",
+	    "telemetry.sdk.version": "1.24.0"
+	  }
+	]
+      },
+      "scopeMetrics": [
+	{
+	  "metrics": [
+	    {
+	      "description": "number of CPUs in the system",
+	      "gauge": {
+		"dataPoints": [
+		  {
+		    "asDouble": NCPU,
+		    "attributes": [
+		      {
+			"agent": "linux-gnu"
+			"domainname": DOMAINID,
+			"groupid": 4209557,
+			"hostname": HOSTNAME,
+			"machineid": MACHINEID,
+			"semantics": "discrete",
+			"type": "u32",
+			"userid": GROUPID
+		      }
+		    ],
+		    "startTimeUnixNano": TIME
+		  }
+		]
+	      },
+	      "name": "hinv.ncpu",
+	      "unit": "none"
+	    }
+	  ],
+	  "scope": {
+	    "name": "pcp.hinv",
+	    "version": 1
+	  }
+	}
+      ]
+    }
+  ]
+}
+
 ---
 {
   "@pcp": {
