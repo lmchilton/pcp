@@ -17,6 +17,7 @@ _pmdaopenmetrics_check || _notrun "openmetrics pmda and/or load generator not in
 _have_python266 && _notrun "python load generator does not currently work with python 2.6.6"
 
 status=1	# failure is the default!
+$sudo rm -rf $tmp $tmp.* $seq.full
 
 _cleanup()
 {
@@ -32,34 +33,23 @@ _stop_auto_restart pmcd
 _pmdaopenmetrics_save_config
 
 # add all the sample text files as urls.
-# need to be a place the user $PCP_USER (pmcd) can read
-#
-( cd $here/openmetrics/samples; ls -1 *.txt ) | sort | while read file
+ls -1 $here/openmetrics/samples/*.txt | sort | while read file
 do
-    cp $here/openmetrics/samples/$file $tmp.$file
-    urlbase=`basename "$file" .txt | tr .- _`
-    echo 'file://'$tmp.$file >$tmp.tmp
-    $sudo cp $tmp.tmp $PCP_PMDAS_DIR/openmetrics/config.d/$urlbase.url
+    urlbase=`basename $file .txt | tr .- _`
+    echo 'file://'$file > $PCP_PMDAS_DIR/openmetrics/config.d/$urlbase.url
 done
-ls -l $PCP_PMDAS_DIR/openmetrics/config.d >>$seq_full
 
+rm -rf $PCP_PMDAS_DIR/openmetrics/*
 # add all the sample scripts
-cp -a $here/openmetrics/scripts/* $PCP_PMDAS_DIR/openmetrics/config.d
+cp $here/openmetrics/scripts/awk_scripted.sh $PCP_PMDAS_DIR/openmetrics/config.d
 find $PCP_PMDAS_DIR/openmetrics/config.d -name GNU\* -exec rm -f {} ";"
 
-awk '{
-              print("# HELP loadavg local load average")
-              print("# TYPE loadavg gauge")
-              printf("loadavg {interval=\"1-minute\"} %.2f\n", $1)
-              printf("loadavg {interval=\"5-minute\"} %.2f\n", $2)
-              printf("loadavg {interval=\"15-minute\"} %.2f\n", $3)
-          }' /proc/loadavg > $tmp.txt
-
-cp $tmp.txt $PCP_PMDAS_DIR/openmetrics/config.d
-ls $PCP_PMDAS_DIR/openmetrics/config.d
+directory="$PCP_PMDAS_DIR/openmetrics/config.d"
+ls $directory
 
 _pmdaopenmetrics_install
 
+'''
 if pminfo -dtTf `pminfo openmetrics | grep -F -v openmetrics.control | LC_COLLATE=POSIX sort` > $tmp.info 2> $tmp.err
 then
     :
@@ -68,6 +58,7 @@ else
     cat $tmp.out
 fi
 cat $tmp.info $tmp.err
+'''
 
 _pmdaopenmetrics_remove >/dev/null 2>&1
 

@@ -886,7 +886,6 @@ class Source(object):
         # clear cached values from all my metrics
         for _, m in self.metrics_by_name.items():
             m.clear_values()
-        # TODO: ditch metrics no longer found in document
 
         # bump the fetch call counter for this source, and for the total (cluster 0)
         self.pmda.stats_fetch_calls[self.cluster] += 1
@@ -1141,6 +1140,15 @@ class OpenMetricsPMDA(PMDA):
         dir_ctime, conf_filelist = self.traverse(self.config_dir, self.config_dir_ctime)
         traverse_time = time.time() - traverse_time
 
+        source_path = '%s/config/pmda/144.0.py' % (os.environ['PCP_VAR_DIR'])
+        conf_nicknames = ["control"]
+        files_to_remove = []
+
+        for file in conf_filelist:
+            file_split = os.path.splitext(file)
+            name = file_split[0].replace(self.config_dir + "/", "").replace("/", ".")
+            conf_nicknames.append(name)
+
         if self.config_dir_ctime is None or self.config_dir_ctime < dir_ctime:
             self.config_dir_ctime = dir_ctime
         else: # no new or changed conf files, don't rescan directory
@@ -1149,7 +1157,32 @@ class OpenMetricsPMDA(PMDA):
         self.log("Config change detected, traversed %d config entries in %.04fs, rescanning ..." % (len(conf_filelist), traverse_time))
         nickname_regexp = self.lookup_regex(r"^[A-Za-z][A-Za-z0-9_.]*$")
 
-        # TODO: maybe nuke sources related to removed files
+        # nuke sources and metrics related to removed files
+        try:
+            with open(source_path, 'rb') as f:
+                instances = pickle.load(f, encoding="bytes")
+        except Exception as e:
+            self.debug("Error could not load sources: %s from path: %s" % (instances, source_path)) if self.dbg else None
+        
+        if len(instances) > len(conf_nicknames):
+            files_to_remove = [x for x in instances if x not in conf_nicknames]
+            self.debug("files to be removed: %s" % files_to_remove)
+            try:
+                with open(source_path, "wb") as f:
+                    pickle.dump(conf_nicknames, f, protocol=0)
+            except Exception as e:
+                self.debug("Error could not write to source(%s) file" % source_path) if self.dbg else None
+            for name in files_to_remove:
+                cluster = self.cluster_table.intern_lookup_value(name)
+                del self.source_by_name[name]
+                del self.source_by_cluster[cluster]
+                for key in self._metric_names:
+                    metric_name = self._metric_names[key]
+                    if metric_name.startswith("openmetrics.%s." % name):
+                        self.debug("removing metric: %s with PMID %s" % (metric_name, key))
+                        self.remove_metric(metric_name, self._metrics[key])
+            self.set_need_refresh()
+
         save_cluster_table = False
         if sort_conf_list:
             # sorted for indom cluster consistency
