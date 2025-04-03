@@ -1,0 +1,4 @@
+# PCP5 hinv.ncpu 60.0.32 u32 PM_INDOM_NULL discrete none
+# HELP hinv_ncpu number of CPUs in the system
+# TYPE hinv_ncpu gauge
+hinv_ncpu{agent="linux",hostname="lchilton-thinkpadp1gen4i.remote.csb",machineid="56fdc9f7f62c4799ba51476639d78805",domainname="localdomain"} 16
