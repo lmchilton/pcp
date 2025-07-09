@@ -1270,12 +1270,14 @@ class OpenMetricsPMDA(PMDA):
                 # this source is already known
                 self.assert_source_invariants(name=name)
                 s = self.source_by_name[name]
+                '''
                 for key, value in self.source_by_cluster.items():
                     if value == s:
                         cluster_for_refresh.append(key)
                         cluster_for_refresh_names.append(name)
                     if name in self.re_add_list:
                         self.initialize_controls(key)
+                '''
             else:
                 try:
                     path = file
@@ -1291,8 +1293,8 @@ class OpenMetricsPMDA(PMDA):
                 except Exception as e:
                     self.err("Error allocating new cluster/source %s (%s)" % (name, e))
 
-            self.debug("refreshing cluster list: %s" % cluster_for_refresh_names) if self.dbg else None
-            self.refresh_some_clusters_for_fetch(cluster_for_refresh)
+            #self.debug("refreshing cluster list: %s" % cluster_for_refresh_names) if self.dbg else None
+            #self.refresh_some_clusters_for_fetch(cluster_for_refresh)
 
         if save_cluster_table:
             self.cluster_table.save()
