@@ -45,6 +45,8 @@ find $PCP_PMDAS_DIR/openmetrics/config.d -name GNU\* -exec rm -f {} ";"
 
 _pmdaopenmetrics_install
 
+cat $PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+pminfo openmetrics.simple_metric
 if ! _pmdaopenmetrics_wait_for_metric openmetrics.thermostat
 then
     status=1
@@ -52,30 +54,41 @@ then
 fi
 
 echo "-- metric removal of new source/metric --"
+content=$(<$PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url)
+echo $content
 $sudo rm $PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
-pminfo openmetrics.simple_metric
+pminfo openmetrics.simple_metric.metric1
 echo
 
 echo "-- source re-addition --"
 # same access controls logic as above, user $PCP_USER needs to be
 # able to read the file at the end of the URL
 #
-cp $here/openmetrics/samples/simple_metric.txt $tmp.simple_metric.txt
-echo 'file:///'$tmp.simple_metric.txt >$PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+echo "$content" > $PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+ls $PCP_PMDAS_DIR/openmetrics/config.d/
+cat $PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+#cp $here/openmetrics/samples/simple_metric.txt $tmp
+#echo 'file://'$tmp.simple_metric.txt >$tmp.tmp
+#$sudo cp $tmp.tmp $PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+#cat $tmp.tmp
 pminfo openmetrics.simple_metric
+
+#cp $here/openmetrics/samples/simple_metric.txt $tmp.simple_metric.txt
+#echo 'file://'$tmp.simple_metric.txt >$PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+#pminfo openmetrics.simple_metric.metric1
 echo
 
-echo "-- metric removal of recognized source/metric --"
-$sudo rm $PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
-pminfo openmetrics.simple_metric
+#echo "-- metric removal of recognized source/metric --"
+#$sudo rm $PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+#pminfo openmetrics.simple_metric
 echo
 
 echo "-- source re-addition with epoch timestamp --"
-txtpath=$here/openmetrics/samples/simple_metric.txt
-urlfile=$PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
-echo 'file:///'$txtpath > $urlfile
-$sudo touch -t 197001010000 $urlfile
-pminfo openmetrics.simple_metric
+#txtpath=$here/openmetrics/samples/simple_metric.txt
+#urlfile=$PCP_PMDAS_DIR/openmetrics/config.d/simple_metric.url
+#echo 'file://'$txtpath > $urlfile
+#$sudo touch -t 197001010000 $urlfile
+#pminfo openmetrics.simple_metric
 echo
 
 _pmdaopenmetrics_remove >/dev/null 2>&1

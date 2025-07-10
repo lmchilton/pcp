@@ -909,7 +909,6 @@ class Source(object):
         # clear cached values from all my metrics
         for _, m in self.metrics_by_name.items():
             m.clear_values()
-        # TODO: ditch metrics no longer found in document
 
         # bump the fetch call counter for this source, and for the total (cluster 0)
         self.pmda.stats_fetch_calls[self.cluster] += 1
@@ -948,6 +947,20 @@ class Source(object):
                     r.raise_for_status() # non-200?  ERROR
                     # NB: the requests package automatically enables http keep-alive and compression
                     self.document = r.text
+
+            # ditch metrics no longer found in document
+            for n,m in self.pmda.all_metrics.items():
+                split_metric = n.split(".")
+                stripped_metric = n.replace("openmetrics.%s." % self.name, "")
+                if split_metric[1] == self.name and stripped_metric not in self.document:
+                    try:
+                        self.pmda.remove_metric(n, m)
+                        self.pmda.removed_metrics[n] = m
+                        self.set_need_refresh()
+                        self.pmda.debug("removed metric: %s") if self.pmda.dbg else None
+                        del self.pmda.all_metrics[n]
+                    except Exception as e:
+                        self.pmda.debug("can't remove metric: %s, see error: %s" % (n, e)) if self.pmda.dbg else None
 
             # update fetch time counter stats, in ms
             incr = int(1000 * (time.time() - fetch_time))
@@ -1149,14 +1162,6 @@ class OpenMetricsPMDA(PMDA):
                     if mtime is None or m > mtime:
                         mtime = m
                     ret.append(fname)
-                fname = os.path.join(path, f)
-                with open(fname, 'r') as name:
-                    f_path = name.readline().strip()
-                    if f_path.startswith("file:///"):
-                        parsed = urlparse(f_path)
-                        m = os.path.getmtime(parsed.path)
-                        if mtime is None or m > mtime:
-                            mtime = m
             for d in subdirs:
                 m, _ = self.traverse(os.path.join(path, d), mtime)
                 if mtime is None or m > mtime:
@@ -1206,22 +1211,25 @@ class OpenMetricsPMDA(PMDA):
         self.re_add_list = []
 
         # calculate config entry nicknames
-        nicknames = []
+        self.nicknames = []
         for file in conf_filelist:
             file_split = os.path.splitext(file)
             name = file_split[0].replace(self.config_dir + "/", "").replace("/", ".")
-            nicknames.append(name)
+            self.nicknames.append(name)
 
         # check if config change adds a previously removed source
         for key in self.removed_metrics:
             split_name = key.split(".")
-            if split_name[1] in nicknames:
+            if split_name[1] in self.nicknames:
                 self.re_add_list.append(split_name[1])
+                cluster = self.cluster_table.intern_lookup_value(split_name[1])
+                if self.controls[cluster] == 0:
+                    self.initialize_controls(cluster)
 
         # if source is not in config directory, remove the metric
         for key, value in self.all_metrics.items():
             split_name = key.split(".")
-            if split_name[1] in nicknames:
+            if split_name[1] in self.nicknames:
                 continue
             try:
                 remove_name = key
@@ -1270,14 +1278,6 @@ class OpenMetricsPMDA(PMDA):
                 # this source is already known
                 self.assert_source_invariants(name=name)
                 s = self.source_by_name[name]
-                '''
-                for key, value in self.source_by_cluster.items():
-                    if value == s:
-                        cluster_for_refresh.append(key)
-                        cluster_for_refresh_names.append(name)
-                    if name in self.re_add_list:
-                        self.initialize_controls(key)
-                '''
             else:
                 try:
                     path = file
@@ -1368,7 +1368,16 @@ class OpenMetricsPMDA(PMDA):
         openmetrics_fetch_callback calls.  Creates threads to
         fetch data in parallel.
         '''
+        # need better mechanism ubut good enough for now
+        temp_clu = []
         clusters = [int(l) for l in _clusters] # convert from PyLong
+        for value in self.nicknames:
+            cluster_value = self.cluster_table.intern_lookup_value(value)
+            temp_clu.append(cluster_value)
+        for value in clusters:
+            if value in temp_clu:
+                continue
+            clusters.remove(value)
         inpqueue = queue.Queue()
         workqueue = queue.Queue()
         self.debug("refreshing clusters %s" % clusters) if self.dbg else None
