@@ -5,7 +5,7 @@ Summary: System-level performance monitoring and performance management
 License: GPL-2.0-or-later AND LGPL-2.1-or-later AND CC-BY-3.0
 URL:     https://pcp.io
 
-Source0: https://github.com/performancecopilot/pcp/releases/pcp-%{version}.src.tar.gz
+Source0: https://github.com/performancecopilot/pcp/archive/pcp-%{version}.tar.gz
 %if 0%{?fedora} >= 40 || 0%{?rhel} >= 10
 ExcludeArch: %{ix86}
 %endif
